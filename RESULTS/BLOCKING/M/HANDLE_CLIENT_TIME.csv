@@ -1,0 +1,5 @@
+HANDLE_CLIENT_TIME, Number of simultaneously working clients, Time in ms
+0, 100.0, 156.78010714285713
+1, 200.0, 168.0415
+2, 300.0, 206.06726875
+3, 400.0, 274.8240113636364

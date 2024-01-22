@@ -1,0 +1,5 @@
+SORTED_TIME, Number of simultaneously working clients, Time in ms
+0, 100.0, 10.786071428571429
+1, 200.0, 10.914891891891893
+2, 300.0, 11.164925
+3, 400.0, 11.427426136363636
