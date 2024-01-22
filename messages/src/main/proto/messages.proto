@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package messages;
+
+message ArrayRequest {
+  repeated int32 array = 1;
+}
+
+message ArrayResponse {
+  repeated int32 sortedArray = 1;
+}
