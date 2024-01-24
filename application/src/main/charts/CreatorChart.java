@@ -11,8 +11,8 @@ import org.jfree.data.xy.XYSeries;
 import org.jfree.data.xy.XYSeriesCollection;
 import servers.ServerArchitectureType;
 import services.metrics.MetricType;
-import testing.GroupMetric;
-import testing.Metrics;
+import services.metrics.GroupMetric;
+import services.metrics.Metrics;
 
 import java.awt.*;
 import java.io.BufferedWriter;
@@ -20,6 +20,8 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+
+import static charts.MyChartUtils.getMetricNameFromMetricType;
 
 public class CreatorChart {
     private final ServerArchitectureType architectureType;
@@ -35,11 +37,13 @@ public class CreatorChart {
     }
 
     public void drawAndSave(File path) throws IOException {
+        var metricName = getMetricNameFromMetricType(metricType);
+
         String xAxis = MyChartUtils.getTitleAxisFromParameterType(metrics.parameterType());
         String yAxis = "Time in ms";
 
         JFreeChart chart = ChartFactory.createXYLineChart(
-            architectureType.name() + " - " + metricType.name(),
+            architectureType.name() + " - " + metricName,
             xAxis, yAxis,
             dataset,
             PlotOrientation.VERTICAL,
@@ -63,8 +67,9 @@ public class CreatorChart {
         plot.setDomainGridlinesVisible(true);
         plot.setDomainGridlinePaint(Color.BLACK);
 
-        ChartUtils.saveChartAsPNG(new File(path, metricType + ".png"), chart, 800, 600);
-        saveDataSetFromCSV(chart.getXYPlot().getDataset(), xAxis, yAxis, new File(path, metricType + ".csv"));
+        var fileName = getMetricNameFromMetricType(metricType);
+        ChartUtils.saveChartAsPNG(new File(path, fileName + ".png"), chart, 800, 600);
+        saveDataSetFromCSV(chart.getXYPlot().getDataset(), xAxis, yAxis, new File(path, fileName + ".csv"));
     }
 
     private XYDataset createDataset() {

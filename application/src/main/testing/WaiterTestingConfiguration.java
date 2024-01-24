@@ -6,9 +6,12 @@ import services.communication.CommunicationService;
 import services.communication.MessageStatus;
 import testing.parameters.*;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashSet;
+
+import static testing.parameters.ParametersConstants.NON_UPDATABLE_PARAMETERS;
 
 public class WaiterTestingConfiguration {
     private final CommunicationService communication =
@@ -81,14 +84,18 @@ public class WaiterTestingConfiguration {
     private UpdateParameterCreateInfo getUpdateParameter(
         ParameterCommunicationInfo[] parameterTypes
     ) {
+        var parameterTypesWithoutUpdatable = Arrays.stream(parameterTypes)
+            .filter(type -> !NON_UPDATABLE_PARAMETERS.contains(type.parameterType))
+            .toArray(ParameterCommunicationInfo[]::new);
+
         communication.println("— Выберите параметр, который будет обновляться:", MessageStatus.QUESTION);
         int i = 1;
-        for (var type : parameterTypes)
-            if (type.parameterType != ParameterType.DELTA)
-                communication.println(
-                    "\t— " + i++ + ": " + type.name + " - " + type.message,
-                    MessageStatus.QUESTION
-                );
+        for (var type : parameterTypesWithoutUpdatable) {
+            communication.println(
+                "\t— " + i++ + ": " + type.name + " - " + type.message,
+                MessageStatus.QUESTION
+            );
+        }
 
         var index = Integer.parseInt(communication.readln());
 
@@ -102,7 +109,7 @@ public class WaiterTestingConfiguration {
         var step = Integer.parseInt(communication.readln());
 
         return new UpdateParameterCreateInfo(
-            index, new UpdateParameter(parameterTypes[index - 1].parameterType, startValue, maxValue, step)
+            index, new UpdateParameter(parameterTypesWithoutUpdatable[index - 1].parameterType, startValue, maxValue, step)
         );
     }
 

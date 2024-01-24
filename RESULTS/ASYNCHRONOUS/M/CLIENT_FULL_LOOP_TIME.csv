@@ -1,5 +1,0 @@
-CLIENT_FULL_LOOP_TIME, Number of simultaneously working clients, Time in ms
-0, 100.0, 79.7945
-1, 200.0, 173.6124166666667
-2, 300.0, 273.571625
-3, 400.0, 342.59375

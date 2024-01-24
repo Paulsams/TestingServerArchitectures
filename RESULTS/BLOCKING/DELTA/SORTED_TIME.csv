@@ -1,0 +1,6 @@
+SORTED_TIME, Time interval from receiving a response , Time in ms
+0, 30.0, 13.0001
+1, 90.0, 12.39295
+2, 150.0, 12.244833333333334
+3, 210.0, 12.190375
+4, 270.0, 12.04326

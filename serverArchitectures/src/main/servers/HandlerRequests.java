@@ -1,6 +1,5 @@
 package servers;
 
-import com.google.protobuf.InvalidProtocolBufferException;
 import messages.Messages;
 import services.ServiceLocator;
 import services.metrics.CollectorMetricsService;
@@ -8,16 +7,16 @@ import services.metrics.MetricType;
 
 import java.util.ArrayList;
 
-class HandlerRequests<TClient> {
+public class HandlerRequests<TClient> {
     @FunctionalInterface
     public interface SenderRequest<TClient> {
         void sendRequest(TClient client, Messages.ArrayResponse response);
     }
 
     private final SenderRequest<TClient> senderRequest;
-    private static final CollectorMetricsService collectorMetrics = ServiceLocator.get(CollectorMetricsService.class);
+    private final CollectorMetricsService collectorMetrics = ServiceLocator.get(CollectorMetricsService.class);
 
-    HandlerRequests(SenderRequest<TClient> senderRequest) {
+    public HandlerRequests(SenderRequest<TClient> senderRequest) {
         this.senderRequest = senderRequest;
     }
 
@@ -31,7 +30,7 @@ class HandlerRequests<TClient> {
         senderRequest.sendRequest(client, arrayResponse);
     }
 
-    private static ArrayList<Integer> sortArray(Messages.ArrayRequest arrayRequest) {
+    private ArrayList<Integer> sortArray(Messages.ArrayRequest arrayRequest) {
         var metricContext = collectorMetrics.start(MetricType.SORTED_TIME);
 
         var sortedArray = new ArrayList<>(arrayRequest.getArrayList());
@@ -50,7 +49,7 @@ class HandlerRequests<TClient> {
             }
         }
 
-        metricContext.stop();
+        metricContext.tryStop();
         return sortedArray;
     }
 }

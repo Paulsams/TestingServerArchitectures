@@ -1,6 +1,5 @@
 package services.metrics;
 
-import testing.Metrics;
 import testing.parameters.Parameter;
 import testing.parameters.ParameterType;
 
@@ -12,7 +11,6 @@ import java.util.Collections;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -29,17 +27,16 @@ public class CollectorMetricsServiceImpl implements CollectorMetricsService {
         }
 
         @Override
-        public void stop() {
+        public Boolean tryStop() {
             if (isUsed)
-                throw new RuntimeException();
+                return false;
 
             CollectorMetricsServiceImpl.this.stop(this);
             isUsed = true;
+            return true;
         }
     }
 
-    // КАКОЙ ЖЕ КРиНГЕ ЯЗЫК...
-    @SuppressWarnings("unchecked")
     private final Map<MetricType, ConcurrentLinkedQueue<Long>> metrics = Collections.unmodifiableMap(
         new EnumMap<>(Arrays.stream(MetricType.values())
             .collect(Collectors.toMap(

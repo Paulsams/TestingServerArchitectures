@@ -18,5 +18,5 @@ dependencies {
 }
 
 application {
-    mainClass = "EntryPoint"
+    mainClass = "CombinerEntryPoint"
 }

@@ -38,8 +38,9 @@ class ReadLoop implements AutoCloseable {
     public ReadLoop(Selector readSelector, Consumer<ClientHolder> callbackClientReadyFromWrite) {
         this.readSelector = readSelector;
         this.callbackOnSendClientResponse = (clientWithMetric, buffer) -> {
-            clientWithMetric.metricContext.stop();
-            clientWithMetric.clientHolder.client().waitingBuffers.add(buffer);
+            clientWithMetric.clientHolder.client().waitingBuffers.add(
+                new ClientHolder.WriteBufferWithMetricContext(buffer, clientWithMetric.metricContext())
+            );
             callbackClientReadyFromWrite.accept(clientWithMetric.clientHolder);
         };
         handlerRequests = new HandlerRequests<>((client, response) ->

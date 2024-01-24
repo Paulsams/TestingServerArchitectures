@@ -1,0 +1,6 @@
+CLIENT_FULL_LOOP_TIME, Time interval from receiving a response , Time in ms
+0, 30.0, 520.5846
+1, 90.0, 417.0039
+2, 150.0, 343.2914333333333
+3, 210.0, 277.709325
+4, 270.0, 213.57901999999999

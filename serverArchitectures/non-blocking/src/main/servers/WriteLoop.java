@@ -34,9 +34,11 @@ class WriteLoop {
                 ClientHolder.Client client = (ClientHolder.Client) key.attachment();
                 SocketChannel clientSocket = (SocketChannel) key.channel();
 
-                ByteBuffer writeBuffer = client.writeBuffers.peek();
-                clientSocket.write(writeBuffer);
-                if (!writeBuffer.hasRemaining())
+                var writeBufferWithMetric = client.writeBuffers.peek();
+
+                writeBufferWithMetric.metricContext().tryStop();
+                clientSocket.write(writeBufferWithMetric.buffer());
+                if (!writeBufferWithMetric.buffer().hasRemaining())
                     client.writeBuffers.poll();
 
                 if (client.writeBuffers.isEmpty())

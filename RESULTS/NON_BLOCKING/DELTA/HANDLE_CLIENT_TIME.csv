@@ -1,0 +1,6 @@
+HANDLE_CLIENT_TIME, Time interval from receiving a response , Time in ms
+0, 30.0, 513.0027
+1, 90.0, 453.3492
+2, 150.0, 416.52776666666665
+3, 210.0, 381.98205
+4, 270.0, 351.93718

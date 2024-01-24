@@ -21,14 +21,13 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import static servers.ServerConstants.*;
+import static servers.ServerConstants.BACKLOG;
+import static servers.ServerConstants.SIZE_THREAD_POOL_FOR_TASKS;
 
 public class BlockingServerArchitecture implements ServerArchitecture {
     private record ClientData(
-        int id,
-        ExecutorService writeThreadPool,
-        DataOutputStream outputStream,
-        CountDownLatch countDownLatch
+        int id, ExecutorService writeThreadPool,
+        DataOutputStream outputStream, CountDownLatch countDownLatch
     ) {
     }
 
@@ -121,7 +120,7 @@ public class BlockingServerArchitecture implements ServerArchitecture {
 
         client.writeThreadPool().execute(() -> {
             try {
-                clientWithMetric.metricContext().stop();
+                clientWithMetric.metricContext().tryStop();
                 client.outputStream.writeInt(response.getSerializedSize());
                 response.writeTo(client.outputStream);
 
