@@ -120,9 +120,10 @@ public class BlockingServerArchitecture implements ServerArchitecture {
 
         client.writeThreadPool().execute(() -> {
             try {
+                var responseInByteArray = response.toByteArray();
                 clientWithMetric.metricContext().tryStop();
                 client.outputStream.writeInt(response.getSerializedSize());
-                response.writeTo(client.outputStream);
+                client.outputStream.write(responseInByteArray);
 
                 logger.info("SERVER: Sent Response to Client " + client.id);
                 client.countDownLatch().countDown();
