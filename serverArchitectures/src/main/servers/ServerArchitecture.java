@@ -17,7 +17,7 @@ public interface ServerArchitecture {
         InetSocketAddress inetAddress,
         Map<ParameterType, Parameter> parameters,
         OnServerInitialized callbackInitialized
-    ) throws IOException;
+    ) throws ServerArchitectureException;
 
     void stop();
 }

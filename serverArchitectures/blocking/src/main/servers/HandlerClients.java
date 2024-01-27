@@ -19,16 +19,24 @@ import java.util.concurrent.Executors;
 public class HandlerClients {
     private record ClientData(
         int id, ExecutorService writeThreadPool,
-        DataOutputStream outputStream, CountDownLatch countDownLatch
-    ) { }
+        DataOutputStream outputStream, CountDownLatch countDownLatch,
+        BlockingServerArchitecture serverArchitecture
+    ) {
+        public void catchError(ServerArchitectureException error) {
+            serverArchitecture.acceptError(error);
+        }
+    }
+
     private record ClientDataWithMetric(ClientData client, CollectMetricContext metricContext) { }
 
     private final ExecutorService tasksThreadPool;
     private final LoggerService logger = ServiceLocator.get(LoggerService.class);
     private final CollectorMetricsService collectorMetrics = ServiceLocator.get(CollectorMetricsService.class);
     private final HandlerRequests<ClientDataWithMetric> handlerRequests = new HandlerRequests<>(this::sendResponse);
+    private final BlockingServerArchitecture serverArchitecture;
 
-    public HandlerClients(ExecutorService tasksThreadPool) {
+    public HandlerClients(BlockingServerArchitecture serverArchitecture, ExecutorService tasksThreadPool) {
+        this.serverArchitecture = serverArchitecture;
         this.tasksThreadPool = tasksThreadPool;
     }
 
@@ -40,7 +48,7 @@ public class HandlerClients {
             var outputStream = new DataOutputStream(clientSocket.getOutputStream());
 
             var clientData = new ClientData(
-                clientId, writeThreadPool, outputStream, new CountDownLatch(x)
+                clientId, writeThreadPool, outputStream, new CountDownLatch(x), serverArchitecture
             );
 
             for (int i = 0; i < x; i++) {
@@ -59,7 +67,7 @@ public class HandlerClients {
             clientSocket.close();
             clientData.writeThreadPool.shutdownNow();
         } catch (IOException | InterruptedException ex) {
-            throw new ServerException("Read Loop failed", ex);
+            serverArchitecture.acceptError(new ServerArchitectureException("Read Loop failed", ex));
         }
     }
 
@@ -76,7 +84,7 @@ public class HandlerClients {
                 logger.info("SERVER: Sent Response to Client " + client.id);
                 client.countDownLatch().countDown();
             } catch (IOException ex) {
-                throw new ServerException("Client failed on write", ex);
+                client.serverArchitecture().acceptError(new ServerArchitectureException("Client failed on write", ex));
             }
         });
     }

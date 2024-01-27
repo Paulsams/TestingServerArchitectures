@@ -11,6 +11,7 @@ import java.util.Collections;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -27,12 +28,19 @@ public class CollectorMetricsServiceImpl implements CollectorMetricsService {
         }
 
         @Override
-        public Boolean tryStop() {
+        public boolean tryStop() {
             if (isUsed)
                 return false;
 
             CollectorMetricsServiceImpl.this.stop(this);
             isUsed = true;
+            return true;
+        }
+    }
+
+    private static class EmptyMetricContext implements CollectMetricContext {
+        @Override
+        public boolean tryStop() {
             return true;
         }
     }
@@ -45,15 +53,36 @@ public class CollectorMetricsServiceImpl implements CollectorMetricsService {
             ))
         ));
 
+    private final AtomicInteger _countClientsNotStartMetric;
+    private final int _countClients;
+
+    public CollectorMetricsServiceImpl(Map<ParameterType, Parameter> parameters) {
+        _countClients = parameters.get(ParameterType.M).getValue();
+        _countClientsNotStartMetric = new AtomicInteger(_countClients);
+    }
+
     @Override
     public CollectMetricContext start(MetricType metricType) {
-        return new MetricHolder(Instant.now(), metricType);
+        if (_countClientsNotStartMetric.get() == 0 || (
+            metricType == MetricType.CLIENT_FULL_LOOP_TIME &&
+                _countClientsNotStartMetric.updateAndGet((it) -> Math.max(it - 1, 0)) == 0)
+        ) {
+            return new MetricHolder(Instant.now(), metricType);
+        }
+
+        return new EmptyMetricContext();
     }
 
     private void stop(MetricHolder metricHolder) {
         var metricTime = Duration.between(metricHolder.startTime, Instant.now()).toMillis();
 
-        metrics.get(metricHolder.metricType).add(metricTime);
+        if (metricHolder.metricType == MetricType.CLIENT_FULL_LOOP_TIME) {
+            _countClientsNotStartMetric.compareAndSet(0, _countClients);
+            metrics.get(metricHolder.metricType).add(metricTime);
+        }
+
+        if (_countClientsNotStartMetric.get() == 0)
+            metrics.get(metricHolder.metricType).add(metricTime);
     }
 
     public Metrics collect(int parameter, Map<ParameterType, Parameter> parameters) {
@@ -73,6 +102,10 @@ public class CollectorMetricsServiceImpl implements CollectorMetricsService {
         var clientFullLoop = allClientFullLoop.stream()
             .skip((long) (allClientFullLoop.size() * 0.2)).limit((long) Math.ceil(allClientFullLoop.size() * 0.8))
             .mapToDouble(number -> (number.doubleValue() - delta * x) / x).average().getAsDouble();
+
+        allSortedTime.clear();
+        allHandleClientTime.clear();
+        allClientFullLoop.clear();
 
         return new Metrics(
             parameter,

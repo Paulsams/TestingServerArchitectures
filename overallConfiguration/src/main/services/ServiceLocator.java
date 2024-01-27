@@ -18,6 +18,10 @@ public class ServiceLocator {
         services.put(serviceClazz, service);
     }
 
+    public<TBase extends Service> void unregister(Class<TBase> serviceClazz) {
+        services.remove(serviceClazz);
+    }
+
     @SuppressWarnings("unchecked")
     public static<T extends Service> T get(Class<T> serviceClazz) {
         return (T) instance.services.get(serviceClazz);

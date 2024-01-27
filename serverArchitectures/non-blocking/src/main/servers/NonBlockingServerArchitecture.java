@@ -19,13 +19,14 @@ import static servers.ServerConstants.*;
 public class NonBlockingServerArchitecture implements ServerArchitecture {
     private final LoggerService logger = ServiceLocator.get(LoggerService.class);
     private boolean isRunning;
+    private ServerArchitectureException error;
 
     @Override
     public void start(
         InetSocketAddress inetAddress,
         Map<ParameterType, Parameter> parameters,
         OnServerInitialized callbackInitialized
-    ) throws IOException {
+    ) throws ServerArchitectureException {
         isRunning = true;
 
         int m = parameters.get(ParameterType.M).getValue();
@@ -53,40 +54,41 @@ public class NonBlockingServerArchitecture implements ServerArchitecture {
             synchronized (this) {
                 while (isRunning) {
                     this.wait();
+
+                    if (error != null)
+                        throw error;
                 }
             }
 
             readLoop.close();
 
             logger.info("SERVER: stopped");
-        } catch (IOException e) {
-            throw e;
         } catch (Exception e) {
-            throw new ServerException("Main Loop Server failed", e);
+            throw new ServerArchitectureException("Main Loop Server failed", e);
         }
     }
 
-    private static ReadLoop createAndStartReadLoop(Selector readSelector, WriteLoop writeLoop) {
+    private ReadLoop createAndStartReadLoop(Selector readSelector, WriteLoop writeLoop) {
         var readLoop = new ReadLoop(readSelector, writeLoop::addClient);
         new Thread(() -> {
             try {
                 readLoop.readClients();
             } catch (ClosedSelectorException ignored) {
             } catch (IOException e) {
-                throw new ServerException("Read Loop failed", e);
+                acceptError(new ServerArchitectureException("Read Loop failed", e));
             }
         }).start();
         return readLoop;
     }
 
-    private static WriteLoop createAndStartWriteLoop(Selector writeSelector) {
+    private WriteLoop createAndStartWriteLoop(Selector writeSelector) {
         var writeLoop = new WriteLoop(writeSelector);
         new Thread(() -> {
             try {
                 writeLoop.writeClients();
             } catch (ClosedSelectorException ignored) {
             } catch (IOException e) {
-                throw new ServerException("Write Loop failed", e);
+                acceptError(new ServerArchitectureException("Write Loop failed", e));
             }
         }).start();
 
@@ -95,6 +97,15 @@ public class NonBlockingServerArchitecture implements ServerArchitecture {
 
     @Override
     public void stop() {
+        notifyMe();
+    }
+
+    void acceptError(ServerArchitectureException error) {
+        this.error = error;
+        notifyMe();
+    }
+
+    private void notifyMe() {
         synchronized (this) {
             isRunning = false;
             this.notify();

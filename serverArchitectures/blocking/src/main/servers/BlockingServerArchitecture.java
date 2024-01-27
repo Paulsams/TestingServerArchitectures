@@ -19,16 +19,17 @@ import static servers.ServerConstants.SIZE_THREAD_POOL_FOR_TASKS;
 public class BlockingServerArchitecture implements ServerArchitecture {
     private final ExecutorService tasksThreadPool = Executors.newFixedThreadPool(SIZE_THREAD_POOL_FOR_TASKS);
     private final LoggerService logger = ServiceLocator.get(LoggerService.class);
-    private final HandlerClients handlerClients = new HandlerClients(tasksThreadPool);
+    private final HandlerClients handlerClients = new HandlerClients(this, tasksThreadPool);
 
     private Boolean isRunning;
+    private ServerArchitectureException error;
 
     @Override
     public void start(
         InetSocketAddress inetAddress,
         Map<ParameterType, Parameter> parameters,
         OnServerInitialized callbackInitialized
-    ) throws IOException {
+    ) throws ServerArchitectureException {
         isRunning = true;
 
         try (var socket = new ServerSocket(inetAddress.getPort(), BACKLOG, inetAddress.getAddress())) {
@@ -49,18 +50,33 @@ public class BlockingServerArchitecture implements ServerArchitecture {
             synchronized (this) {
                 while (isRunning) {
                     this.wait();
+
+                    if (error != null)
+                        throw error;
                 }
             }
 
             tasksThreadPool.shutdownNow();
             logger.info("SERVER: stopped");
-        } catch (InterruptedException ex) {
-            throw new ServerException("Main Loop failed", ex);
+        } catch (InterruptedException | IOException ex) {
+            throw new ServerArchitectureException("Main Loop failed", ex);
         }
     }
 
     @Override
     public void stop() {
+        synchronized (this) {
+            isRunning = false;
+            this.notify();
+        }
+    }
+
+    void acceptError(ServerArchitectureException error) {
+        this.error = error;
+        notifyMe();
+    }
+
+    private void notifyMe() {
         synchronized (this) {
             isRunning = false;
             this.notify();

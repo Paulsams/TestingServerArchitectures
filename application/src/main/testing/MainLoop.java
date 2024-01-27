@@ -1,7 +1,9 @@
 package testing;
 
 import client.Client;
+import client.ClientException;
 import servers.ServerArchitecture;
+import servers.ServerArchitectureException;
 import servers.ServerConstants;
 import testing.parameters.ParameterType;
 import testing.parameters.TestingParameters;
@@ -37,7 +39,7 @@ public class MainLoop {
                         this.notify();
                     }
                 });
-            } catch (IOException ex) {
+            } catch (ServerArchitectureException ex) {
                 throw new TestingException(ex);
             }
         });
@@ -80,7 +82,7 @@ public class MainLoop {
                     } catch (ConnectException ignored) {
                         // Как раз из-за того, что backlog ограничен, как выше объяснено, то чтобы все клиента зашли --
                         // приходится ловить исключение и пробовать снова.
-                    } catch (IOException ex) {
+                    } catch (IOException | ClientException ex) {
                         throw new TestingException("An unexpected exception occurred while starting client", ex);
                     }
                 }

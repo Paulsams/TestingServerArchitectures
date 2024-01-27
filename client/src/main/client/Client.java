@@ -32,7 +32,7 @@ public class Client {
         this.parameters = parameters;
     }
 
-    public void start(InetSocketAddress inetAddress) throws IOException {
+    public void start(InetSocketAddress inetAddress) throws IOException, ClientException {
         try (var socket = SocketChannel.open(inetAddress)) {
             var inputStream = new DataInputStream(socket.socket().getInputStream());
             var outputStream = new DataOutputStream(socket.socket().getOutputStream());

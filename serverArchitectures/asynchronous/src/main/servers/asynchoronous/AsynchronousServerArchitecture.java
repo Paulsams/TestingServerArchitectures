@@ -3,7 +3,7 @@ package servers.asynchoronous;
 import servers.HandlerRequests;
 import servers.NIOUtils;
 import servers.ServerArchitecture;
-import servers.ServerException;
+import servers.ServerArchitectureException;
 import testing.parameters.Parameter;
 import testing.parameters.ParameterType;
 
@@ -23,6 +23,7 @@ public class AsynchronousServerArchitecture implements ServerArchitecture {
     private final HandlerRequests<ClientDataWithMetric> handlerRequests;
 
     private boolean isRunning;
+    private ServerArchitectureException error;
 
     public AsynchronousServerArchitecture() {
         handlerRequests = new HandlerRequests<>((clientDataWithMetric, response) ->
@@ -39,7 +40,7 @@ public class AsynchronousServerArchitecture implements ServerArchitecture {
         InetSocketAddress inetAddress,
         Map<ParameterType, Parameter> parameters,
         OnServerInitialized callbackInitialized
-    ) throws IOException {
+    ) throws ServerArchitectureException {
         isRunning = true;
 
         int m = parameters.get(ParameterType.M).getValue();
@@ -49,12 +50,15 @@ public class AsynchronousServerArchitecture implements ServerArchitecture {
 
             callbackInitialized.onInitialized();
 
+            var clients = new ClientHolder[m];
             for (int i = 0; i < m; i++) {
                 var clientSocket = socketChannel.accept().get();
 
                 var client = new ClientHolder(
-                    clientSocket, ByteBuffer.allocate(START_READ_BUFFER_SIZE_ON_SERVER_BY_CLIENT)
+                    clientSocket, ByteBuffer.allocate(START_READ_BUFFER_SIZE_ON_SERVER_BY_CLIENT), this
                 );
+                clients[i] = client;
+
                 clientSocket.read(client.getReadBuffer(), client, new ReadCompletionHandler(
                     tasksThreadPool, handlerRequests
                 ));
@@ -62,18 +66,31 @@ public class AsynchronousServerArchitecture implements ServerArchitecture {
 
             synchronized (this) {
                 while (isRunning) {
+                    // Не придумал. больше, кроме как тут чекать
                     this.wait();
+
+                    if (error != null)
+                        throw error;
                 }
             }
 
             tasksThreadPool.shutdownNow();
-        } catch (ExecutionException | InterruptedException e) {
-            throw new ServerException("Main Loop failed", e);
+        } catch (IOException | ExecutionException | InterruptedException e) {
+            throw new ServerArchitectureException("Main Loop failed", e);
         }
     }
 
     @Override
     public void stop() {
+        notifyMe();
+    }
+
+    void acceptError(ServerArchitectureException error) {
+        this.error = error;
+        notifyMe();
+    }
+
+    private void notifyMe() {
         synchronized (this) {
             isRunning = false;
             this.notify();

@@ -1,18 +1,18 @@
 package servers;
 
-public class ServerException extends RuntimeException {
+public class ServerArchitectureException extends Exception {
     private static final String MESSAGE_NAME = "message";
     private static final String CAUSE_NAME = "message";
 
-    public ServerException(String message) {
+    public ServerArchitectureException(String message) {
         super(getPrefixMessage(MESSAGE_NAME) + message);
     }
 
-    public ServerException(String message, Throwable cause) {
+    public ServerArchitectureException(String message, Throwable cause) {
         super(getPrefixMessage(MESSAGE_NAME) + message + "\n and " + CAUSE_NAME + " :\n", cause);
     }
 
-    public ServerException(Throwable cause) {
+    public ServerArchitectureException(Throwable cause) {
         super(getPrefixMessage(CAUSE_NAME), cause);
     }
 

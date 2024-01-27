@@ -9,10 +9,7 @@ import services.ServiceLocator;
 import services.communication.CommunicationService;
 import services.communication.files.ReadFromFileCommunicationService;
 import services.loggers.LoggerService;
-import services.metrics.CollectorMetricsServiceImpl;
-import services.metrics.GroupMetric;
-import services.metrics.MetricType;
-import services.metrics.Metrics;
+import services.metrics.*;
 import testing.MainLoop;
 import testing.TestingConfiguration;
 import testing.TestingException;
@@ -28,7 +25,7 @@ import java.util.function.Supplier;
 import static charts.MyChartUtils.RESULTS_DIR;
 
 public class ReadInputDirectoryTesting implements ITestingAlgorithm {
-    private static final int DELAY_FOR_GC_IN_MS = 1000;
+    private static final int DELAY_FOR_GC_IN_MS = 2000;
 
     private final ServiceLocator serviceLocator;
 
@@ -39,22 +36,21 @@ public class ReadInputDirectoryTesting implements ITestingAlgorithm {
     }
 
     @Override
-    public void startTesting(CollectorMetricsServiceImpl collectionMetricsService) {
+    public void startTesting() {
         for (var inputFile : Objects.requireNonNull(new File("INPUT").listFiles())) {
             if (inputFile.isDirectory())
                 continue;
 
             try {
                 serviceLocator.register(CommunicationService.class, new ReadFromFileCommunicationService(inputFile));
-
-                startOneLoopTest(collectionMetricsService);
+                startOneLoopTest();
             } catch (Throwable ex) {
                 throw new TestingException(ex);
             }
         }
     }
 
-    private void startOneLoopTest(CollectorMetricsServiceImpl collectionMetricsService) throws InterruptedException {
+    private void startOneLoopTest() throws InterruptedException {
         var configuration = new WaiterTestingConfiguration().get();
 
         Supplier<ServerArchitecture> architectureFactory = () -> switch (configuration.architectureType()) {
@@ -67,8 +63,15 @@ public class ReadInputDirectoryTesting implements ITestingAlgorithm {
 
         var allMetrics = new ArrayList<Metrics>();
         do {
-            var metrics = startTest(collectionMetricsService, architectureFactory, configuration);
-            allMetrics.add(metrics);
+            {
+                var collectionMetricsService = new CollectorMetricsServiceImpl(configuration.parameters().all());
+                serviceLocator.register(CollectorMetricsService.class, collectionMetricsService);
+
+                var metrics = startTest(collectionMetricsService, architectureFactory, configuration);
+                allMetrics.add(metrics);
+
+                serviceLocator.unregister(CollectorMetricsService.class);
+            }
 
             System.gc();
             Thread.sleep(DELAY_FOR_GC_IN_MS);
