@@ -4,6 +4,7 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import messages.Messages;
 import servers.HandlerRequests;
 import servers.NIOUtils;
+import servers.ServerException;
 import services.ServiceLocator;
 import services.metrics.CollectorMetricsService;
 import services.metrics.MetricType;
@@ -45,7 +46,7 @@ class ReadCompletionHandler implements CompletionHandler<Integer, ClientHolder> 
                     new ClientDataWithMetric(client, metricContext), arrayRequest
                 ));
             } catch (InvalidProtocolBufferException e) {
-                throw new RuntimeException(e);
+                throw new ServerException("Protocol was not parsed", e);
             }
 
             client.currentBufferLength = null;
@@ -56,6 +57,6 @@ class ReadCompletionHandler implements CompletionHandler<Integer, ClientHolder> 
 
     @Override
     public void failed(Throwable exc, ClientHolder attachment) {
-        throw new RuntimeException(exc);
+        throw new ServerException("Failed read client data", exc);
     }
 }

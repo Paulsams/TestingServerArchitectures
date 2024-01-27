@@ -3,6 +3,7 @@ package servers.asynchoronous;
 import servers.HandlerRequests;
 import servers.NIOUtils;
 import servers.ServerArchitecture;
+import servers.ServerException;
 import testing.parameters.Parameter;
 import testing.parameters.ParameterType;
 
@@ -47,7 +48,7 @@ public class AsynchronousServerArchitecture implements ServerArchitecture {
             socketChannel.bind(inetAddress, BACKLOG);
 
             callbackInitialized.onInitialized();
-            ;
+
             for (int i = 0; i < m; i++) {
                 var clientSocket = socketChannel.accept().get();
 
@@ -67,7 +68,7 @@ public class AsynchronousServerArchitecture implements ServerArchitecture {
 
             tasksThreadPool.shutdownNow();
         } catch (ExecutionException | InterruptedException e) {
-            throw new IOException(e);
+            throw new ServerException("Main Loop failed", e);
         }
     }
 

@@ -60,7 +60,7 @@ public class Client {
                 );
 
                 if (!isSorted(response.getSortedArrayList()))
-                    throw new RuntimeException("The array sent from the server is not sorted");
+                    throw new ClientException("The array sent from the server is not sorted");
 
                 logger.log("CLIENT " + id + ": Stop " + i + " Loop");
 
@@ -69,8 +69,8 @@ public class Client {
             metricContext.tryStop();
 
             logger.important("CLIENT " + id + ": end all loops");
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
+        } catch (InterruptedException ex) {
+            throw new ClientException("The client thread was interrupted for some reason", ex);
         }
     }
 

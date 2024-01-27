@@ -36,26 +36,8 @@ public class NonBlockingServerArchitecture implements ServerArchitecture {
         ) {
             serverSocketChannel.socket().bind(inetAddress, BACKLOG);
 
-            var writeLoop = new WriteLoop(writeSelector);
-            var readLoop = new ReadLoop(readSelector, writeLoop::addClient);
-
-            new Thread(() -> {
-                try {
-                    readLoop.readClients();
-                } catch (ClosedSelectorException ignored) {
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            }).start();
-
-            new Thread(() -> {
-                try {
-                    writeLoop.writeClients();
-                } catch (ClosedSelectorException ignored) {
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            }).start();
+            var writeLoop = createAndStartWriteLoop(writeSelector);
+            var readLoop = createAndStartReadLoop(readSelector, writeLoop);
 
             logger.info("SERVER: started");
             callbackInitialized.onInitialized();
@@ -80,8 +62,35 @@ public class NonBlockingServerArchitecture implements ServerArchitecture {
         } catch (IOException e) {
             throw e;
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throw new ServerException("Main Loop Server failed", e);
         }
+    }
+
+    private static ReadLoop createAndStartReadLoop(Selector readSelector, WriteLoop writeLoop) {
+        var readLoop = new ReadLoop(readSelector, writeLoop::addClient);
+        new Thread(() -> {
+            try {
+                readLoop.readClients();
+            } catch (ClosedSelectorException ignored) {
+            } catch (IOException e) {
+                throw new ServerException("Read Loop failed", e);
+            }
+        }).start();
+        return readLoop;
+    }
+
+    private static WriteLoop createAndStartWriteLoop(Selector writeSelector) {
+        var writeLoop = new WriteLoop(writeSelector);
+        new Thread(() -> {
+            try {
+                writeLoop.writeClients();
+            } catch (ClosedSelectorException ignored) {
+            } catch (IOException e) {
+                throw new ServerException("Write Loop failed", e);
+            }
+        }).start();
+
+        return writeLoop;
     }
 
     @Override

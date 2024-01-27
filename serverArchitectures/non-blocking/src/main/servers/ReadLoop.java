@@ -8,6 +8,7 @@ import services.metrics.CollectorMetricsService;
 import services.metrics.MetricType;
 
 import java.io.IOException;
+import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
@@ -54,43 +55,51 @@ class ReadLoop implements AutoCloseable {
 
     public void readClients() throws IOException {
         while (true) {
-            // Select
             int countSelected = readSelector.select();
             logger.log("SERVER: Read select return " + countSelected);
-            // Обработка
+
+            // Processing
             Set<SelectionKey> selectedKeys = readSelector.selectedKeys();
             Iterator<SelectionKey> keysIterator = selectedKeys.iterator();
             while (keysIterator.hasNext()) {
                 SelectionKey key = keysIterator.next();
-                boolean clientIsCancel;
-                try {
-                    clientIsCancel = !readClient(key);
-                } catch (java.net.SocketException e) {
-                    clientIsCancel = true;
-                }
-
-                if (clientIsCancel) {
-                    var clientSocket = ((SocketChannel)key.channel()).socket();
-                    var remoteSocketAddress = clientSocket.getRemoteSocketAddress();
-                    logger.important("SERVER: Client: " + remoteSocketAddress + " cancel");
-
-                    key.cancel();
-                }
+                readHandleClient(key);
                 keysIterator.remove();
             }
-            // Регистрация новых
-            while (!waitingReadingClients.isEmpty()) {
-                ClientHolder clientHolder = waitingReadingClients.poll();
-                if (clientHolder == null)
-                    break;
 
-                SelectionKey key = clientHolder.socketChannel().register(readSelector, SelectionKey.OP_READ);
-                key.attach(clientHolder.client());
+            registerNewClients();
+        }
+    }
 
-                logger.log("SERVER: Client: " +
-                    clientHolder.socketChannel().socket().getInetAddress() +
-                    " Registered from Read");
-            }
+    private void registerNewClients() throws ClosedChannelException {
+        while (!waitingReadingClients.isEmpty()) {
+            ClientHolder clientHolder = waitingReadingClients.poll();
+            if (clientHolder == null)
+                break;
+
+            SelectionKey key = clientHolder.socketChannel().register(readSelector, SelectionKey.OP_READ);
+            key.attach(clientHolder.client());
+
+            logger.log("SERVER: Client: " +
+                clientHolder.socketChannel().socket().getInetAddress() +
+                " Registered from Read");
+        }
+    }
+
+    private void readHandleClient(SelectionKey key) throws IOException {
+        boolean clientIsCancel;
+        try {
+            clientIsCancel = !readClient(key);
+        } catch (java.net.SocketException e) {
+            clientIsCancel = true;
+        }
+
+        if (clientIsCancel) {
+            var clientSocket = ((SocketChannel) key.channel()).socket();
+            var remoteSocketAddress = clientSocket.getRemoteSocketAddress();
+            logger.important("SERVER: Client: " + remoteSocketAddress + " cancel");
+
+            key.cancel();
         }
     }
 

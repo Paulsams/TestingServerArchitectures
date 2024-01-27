@@ -14,8 +14,8 @@ public class ServiceLocator {
     private final Map<Class<?>, Service> services = new HashMap<>();
 
     public<TBase extends Service, T extends TBase> void register(
-            Class<TBase> serviceClazz, Supplier<T> factory) {
-        services.put(serviceClazz, factory.get());
+            Class<TBase> serviceClazz, T service) {
+        services.put(serviceClazz, service);
     }
 
     @SuppressWarnings("unchecked")

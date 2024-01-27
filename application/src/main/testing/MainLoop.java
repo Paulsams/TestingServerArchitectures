@@ -1,8 +1,8 @@
 package testing;
 
 import client.Client;
-import servers.ServerConstants;
 import servers.ServerArchitecture;
+import servers.ServerConstants;
 import testing.parameters.ParameterType;
 import testing.parameters.TestingParameters;
 
@@ -37,8 +37,8 @@ public class MainLoop {
                         this.notify();
                     }
                 });
-            } catch (IOException e) {
-                throw new RuntimeException(e);
+            } catch (IOException ex) {
+                throw new TestingException(ex);
             }
         });
         serverThread.start();
@@ -55,8 +55,8 @@ public class MainLoop {
 
             server.stop();
             serverThread.join();
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
+        } catch (InterruptedException ex) {
+            throw new TestingException(ex);
         }
     }
 
@@ -65,9 +65,11 @@ public class MainLoop {
             int finalI = i;
 
             try {
+                // из-за того, что в Windows backlog ограничено значением 200 (и не важно, как сильно ты его повышаешь),
+                // то приходится немного делать сон, чтобы совсем исключениями не нагружать сервер.
                 Thread.sleep(1);
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
+            } catch (InterruptedException ex) {
+                throw new TestingException("Someone interrupted thread starting clients", ex);
             }
 
             var clientThread = new Thread(() -> {
@@ -76,9 +78,10 @@ public class MainLoop {
                         clients[finalI].start(inetAddress);
                         break;
                     } catch (ConnectException ignored) {
-
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
+                        // Как раз из-за того, что backlog ограничен, как выше объяснено, то чтобы все клиента зашли --
+                        // приходится ловить исключение и пробовать снова.
+                    } catch (IOException ex) {
+                        throw new TestingException("An unexpected exception occurred while starting client", ex);
                     }
                 }
             });

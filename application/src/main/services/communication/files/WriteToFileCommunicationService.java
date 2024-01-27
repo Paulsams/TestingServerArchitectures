@@ -1,6 +1,7 @@
 package services.communication.files;
 
 import services.communication.CommunicationService;
+import services.communication.CommunicationServiceException;
 import services.communication.MessageStatus;
 
 import java.io.FileNotFoundException;
@@ -11,11 +12,11 @@ public class WriteToFileCommunicationService implements CommunicationService, Au
     private final String[] exampleAnswers;
     private int currentAnswer = 0;
 
-    public WriteToFileCommunicationService(String pathToFile, String[] exampleAnswers) {
+    public WriteToFileCommunicationService(String pathToFile, String[] exampleAnswers) throws CommunicationServiceException {
         try {
             fileStream = new PrintStream(pathToFile);
         } catch (FileNotFoundException ex) {
-            throw new RuntimeException(ex);
+            throw new CommunicationServiceException(ex);
         }
 
         this.exampleAnswers = exampleAnswers;

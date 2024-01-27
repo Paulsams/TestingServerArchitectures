@@ -1,20 +1,21 @@
 package testing.algorithms;
 
 import charts.CreatorChart;
-import servers.asynchoronous.AsynchronousServerArchitecture;
 import servers.BlockingServerArchitecture;
 import servers.NonBlockingServerArchitecture;
 import servers.ServerArchitecture;
+import servers.asynchoronous.AsynchronousServerArchitecture;
 import services.ServiceLocator;
 import services.communication.CommunicationService;
 import services.communication.files.ReadFromFileCommunicationService;
 import services.loggers.LoggerService;
 import services.metrics.CollectorMetricsServiceImpl;
-import services.metrics.MetricType;
 import services.metrics.GroupMetric;
-import testing.MainLoop;
+import services.metrics.MetricType;
 import services.metrics.Metrics;
+import testing.MainLoop;
 import testing.TestingConfiguration;
+import testing.TestingException;
 import testing.WaiterTestingConfiguration;
 
 import java.io.File;
@@ -27,6 +28,8 @@ import java.util.function.Supplier;
 import static charts.MyChartUtils.RESULTS_DIR;
 
 public class ReadInputDirectoryTesting implements ITestingAlgorithm {
+    private static final int DELAY_FOR_GC_IN_MS = 1000;
+
     private final ServiceLocator serviceLocator;
 
     private final LoggerService logger = ServiceLocator.get(LoggerService.class);
@@ -41,15 +44,17 @@ public class ReadInputDirectoryTesting implements ITestingAlgorithm {
             if (inputFile.isDirectory())
                 continue;
 
-            serviceLocator.register(CommunicationService.class, () ->
-                new ReadFromFileCommunicationService(inputFile)
-            );
+            try {
+                serviceLocator.register(CommunicationService.class, new ReadFromFileCommunicationService(inputFile));
 
-            startOneLoopTest(collectionMetricsService);
+                startOneLoopTest(collectionMetricsService);
+            } catch (Throwable ex) {
+                throw new TestingException(ex);
+            }
         }
     }
 
-    private void startOneLoopTest(CollectorMetricsServiceImpl collectionMetricsService) {
+    private void startOneLoopTest(CollectorMetricsServiceImpl collectionMetricsService) throws InterruptedException {
         var configuration = new WaiterTestingConfiguration().get();
 
         Supplier<ServerArchitecture> architectureFactory = () -> switch (configuration.architectureType()) {
@@ -66,11 +71,7 @@ public class ReadInputDirectoryTesting implements ITestingAlgorithm {
             allMetrics.add(metrics);
 
             System.gc();
-            try {
-                Thread.sleep(1000);
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
+            Thread.sleep(DELAY_FOR_GC_IN_MS);
         } while (updateParameter.update());
 
         var groupMetric = new GroupMetric(updateParameter.getType(), allMetrics);
@@ -82,7 +83,7 @@ public class ReadInputDirectoryTesting implements ITestingAlgorithm {
         ).toFile();
 
         if (!pathToDirectory.exists() && !pathToDirectory.mkdirs())
-            throw new RuntimeException("Creation of folders for saving results failed with an error");
+            throw new TestingException("Creation of folders for saving results failed with an error");
 
         try {
             for (var metricType : MetricType.values()) {
@@ -90,8 +91,8 @@ public class ReadInputDirectoryTesting implements ITestingAlgorithm {
                     configuration.architectureType(), groupMetric, metricType
                 ).drawAndSave(pathToDirectory);
             }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+        } catch (IOException ex) {
+            throw new TestingException("An error occurred while saving the chart", ex);
         }
     }
 

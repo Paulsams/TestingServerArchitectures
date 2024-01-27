@@ -1,6 +1,7 @@
 package services.communication.files;
 
 import services.communication.CommunicationService;
+import services.communication.CommunicationServiceException;
 import services.communication.MessageStatus;
 
 import java.io.BufferedReader;
@@ -14,12 +15,12 @@ public class ReadFromFileCommunicationService implements CommunicationService, A
     private final BufferedReader fileStream;
     private final Iterator<String> lines;
 
-    public ReadFromFileCommunicationService(File pathToFile) {
+    public ReadFromFileCommunicationService(File pathToFile) throws CommunicationServiceException {
         try {
             fileStream = Files.newBufferedReader(pathToFile.toPath());
             lines = fileStream.lines().iterator();
         } catch (IOException ex) {
-            throw new RuntimeException(ex);
+            throw new CommunicationServiceException(ex);
         }
     }
 

@@ -22,13 +22,10 @@ public class EntryPoint {
                 LogStatus.INFO,
                 LogStatus.IMPORTANT
             ));
-//            new EmptyLogger();
-        serviceLocator.register(LoggerService.class,
-            () -> logger
-        );
+        serviceLocator.register(LoggerService.class, logger);
 
         var collectionMetricsService = new CollectorMetricsServiceImpl();
-        serviceLocator.register(CollectorMetricsService.class, () -> collectionMetricsService);
+        serviceLocator.register(CollectorMetricsService.class, collectionMetricsService);
 
         var testingAlgorithm = new ReadInputDirectoryTesting(serviceLocator);
         testingAlgorithm.startTesting(collectionMetricsService);

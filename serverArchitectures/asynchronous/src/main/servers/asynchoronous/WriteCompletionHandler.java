@@ -1,5 +1,7 @@
 package servers.asynchoronous;
 
+import servers.ServerException;
+
 import java.nio.ByteBuffer;
 import java.nio.channels.CompletionHandler;
 
@@ -21,6 +23,6 @@ class WriteCompletionHandler implements CompletionHandler<Integer, ClientDataWit
 
     @Override
     public void failed(Throwable exc, ClientDataWithMetric attachment) {
-        throw new RuntimeException(exc);
+        throw new ServerException("Write client data failed", exc);
     }
 }

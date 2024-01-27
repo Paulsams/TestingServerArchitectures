@@ -4,7 +4,7 @@ import services.ServiceLocator;
 import services.loggers.LoggerService;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
+import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
@@ -31,40 +31,47 @@ class WriteLoop {
             Iterator<SelectionKey> keysIterator = writeSelector.selectedKeys().iterator();
             while (keysIterator.hasNext()) {
                 SelectionKey key = keysIterator.next();
-                ClientHolder.Client client = (ClientHolder.Client) key.attachment();
-                SocketChannel clientSocket = (SocketChannel) key.channel();
-
-                var writeBufferWithMetric = client.writeBuffers.peek();
-
-                writeBufferWithMetric.metricContext().tryStop();
-                clientSocket.write(writeBufferWithMetric.buffer());
-                if (!writeBufferWithMetric.buffer().hasRemaining())
-                    client.writeBuffers.poll();
-
-                if (client.writeBuffers.isEmpty())
-                    key.cancel();
+                readHandleClient(key);
 
                 keysIterator.remove();
             }
 
-            // Registering new clients
-            while (!waitingWritingClients.isEmpty()) {
-                ClientHolder clientHolder = waitingWritingClients.poll();
-                if (clientHolder == null)
-                    break;
+            registerNewClients();
+        }
+    }
 
-                var waitingClient = clientHolder.client();
-                waitingClient.writeBuffers.addAll(waitingClient.waitingBuffers);
+    private static void readHandleClient(SelectionKey key) throws IOException {
+        ClientHolder.Client client = (ClientHolder.Client) key.attachment();
+        SocketChannel clientSocket = (SocketChannel) key.channel();
 
-                SelectionKey key = clientHolder.socketChannel().register(writeSelector, SelectionKey.OP_WRITE);
-                key.attach(waitingClient);
+        var writeBufferWithMetric = client.writeBuffers.peek();
 
-                logger.log(
-                "Client: " +
-                    clientHolder.socketChannel().socket().getRemoteSocketAddress() +
-                    " Registered from Write"
-                );
-            }
+        writeBufferWithMetric.metricContext().tryStop();
+        clientSocket.write(writeBufferWithMetric.buffer());
+        if (!writeBufferWithMetric.buffer().hasRemaining())
+            client.writeBuffers.poll();
+
+        if (client.writeBuffers.isEmpty())
+            key.cancel();
+    }
+
+    private void registerNewClients() throws ClosedChannelException {
+        while (!waitingWritingClients.isEmpty()) {
+            ClientHolder clientHolder = waitingWritingClients.poll();
+            if (clientHolder == null)
+                break;
+
+            var waitingClient = clientHolder.client();
+            waitingClient.writeBuffers.addAll(waitingClient.waitingBuffers);
+
+            SelectionKey key = clientHolder.socketChannel().register(writeSelector, SelectionKey.OP_WRITE);
+            key.attach(waitingClient);
+
+            logger.log(
+            "Client: " +
+                clientHolder.socketChannel().socket().getRemoteSocketAddress() +
+                " Registered from Write"
+            );
         }
     }
 
